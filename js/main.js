@@ -97,79 +97,37 @@ function initializeClock(id, endtime) {
 
 /* ПЛАВНАЯ ПРОКРУТКА */
 
-//Передача в переменную всех элементов html на странице
-let elements = document.documentElement,
-	body = document.body,//Передаем в переменную body
-	links = document.links;//Получаем все якорные ссылки на странице
+	function animate(draw, duration) {
+		let start = performance.now();
 
-//Функция опредления нажатой ссылки и расчета перемещения
-function calcScroll() {
+		requestAnimationFrame(function animate(time) {
+			let timePassed = time - start;
 
-//Перебор циклом все ссылок и определение той, на которой был сделан клик
-  for (let i = 0; i < links.length; i++) {
-    links[i].onclick = function(event = window.event) {
-    	// event = event || window.event;//Кросс-браузерность
-      //Определение и округление текущего расстояния от верха документа
-      let scrollTop = Math.round(body.scrollTop || elements.scrollTop);
-      if (this.hash !== '') {
-//Предотвращение действия браузера по дефолту при отсутвии атрибута hash у элемента
-        event.preventDefault();
-//Получение элемента, к которому ведет якорь нажатой ссылки
-        let targetElement = document.getElementById(this.hash.substring(1)),
-//Задел в 80px, чтобы при прокрутке меню не закрывало заголовок секции
-			targetElementTop = -80;
-//Вычисление через цикл расстояния от верха до элемента, к которому ведет нажатая ссылка
-        while (targetElement.offsetParent) {
-          targetElementTop += targetElement.offsetTop;
-          targetElement = targetElement.offsetParent;
-        }
-        //Получение округленного значения расположения элемента
-        targetElementTop = Math.round(targetElementTop);
-/* Функция запуска плавного перемещения (содержит аргументы: текущее растояние от верха
-документа, расстояние от верха документа к контентному блоку, к которому ведет нажатая 
-ссылка и сам контентный блок) */
-		if (document.body.style.overflow !== 'hidden') {//Предотвращает прокрутку при открытом модальном окне
-			clearInterval(move);
-			smoothScroll(scrollTop, targetElementTop, this.hash);
-		}
-      }
-    };
-  }
-};
-calcScroll();
+				if (timePassed > duration) {
+					timePassed = duration;
+				}
 
-let timeInterval = 1, //Задаем временной интервал в 1 миллисекунду
-		prevScrollTop,
-		speed,
-		move;
-//Функция плавной прокрутки
-function smoothScroll(from, to, hash) {
-/* Если элемент (конечная точка движения) расположен ниже текущей точки экрана,
-то scroll ведется с верху вниз (положительное значение), если наоборот, то снизу
-вверх (отрицательное значение) */
-	if (to > from) {
-		speed = 10;
-	} else {
-		speed = -10;
-	}
-//Установка интервала движения
-	move = setInterval(function() {
-//Получение и округение текущей позиции экрана
-    scrollTop = Math.round(body.scrollTop || elements.scrollTop);
-//Условия прекращения или продолжения движения
-    if (prevScrollTop === scrollTop || (to > from && scrollTop >= to) || (to < from && scrollTop <= to)) {
-    	clearInterval(move);
-//Добавление атрибута hash в url после прокрутки (добавляется к адресной строке в браузере)
-      history.pushState(history.state, document.title, location.href.replace(/#.*$/g, '') + hash);
-    } else {
-      body.scrollTop += speed;
-      elements.scrollTop += speed;
-/* Передача текущей позиции экрана в переменную, которая при последующих перемещениях
-будет играть роль места хранения последней позиции экрана */
-      prevScrollTop = scrollTop;
-    }
-  }, timeInterval);//Передача ранее установленного интервала перемещения
-}
+				draw(timePassed);
+
+				if (timePassed < duration) {
+					requestAnimationFrame(animate);
+				}
+		});
+	};
+
+	let navigation = document.getElementsByTagName('nav')[0];
+
+		navigation.addEventListener('click', function(event) {
+			event.preventDefault();
+
+			animate(function(timePassed) {
+				let target = event.target,
+					section = document.getElementById(target.getAttribute('href').slice(1));
+
+					window.scrollBy(0, section.getBoundingClientRect().top / 20 - 3);
+			}, 1200);
+
+		});
 
 /* ОПРЕДЕЛЕНИЕ ТИПА БРАУЗЕРА */
 
@@ -464,8 +422,10 @@ function showSlides(n) {
 /* Возобновление автоматического переключения слайдов 
 при выводе курсора за пределы контейнера (wrap) */
     slider.addEventListener('mouseleave', function (e) {
-        setInterval(timer);
-        showSlides(slideIndex);
+	        timer = setInterval(function () {
+	        next.click();
+	    }, 5000);
+	    showSlides(slideIndex);
     });
 //Переключение слайдов вперед/назад стрелками курсора
     window.addEventListener('keyup', function (e) {
@@ -485,17 +445,16 @@ showSlides(slideIndex);
 
 /* КАЛЬКУЛЯТОР */
 
-let persons = document.getElementsByClassName('counter-block-input')[0],
-	restDays = document.getElementsByClassName('counter-block-input')[1],
-	place = document.getElementById('select'),
-	totalValue = document.getElementById('total'),
-	personsSum = 0,
-	daysSum = 0,
-	total = 0,
-	a = 0,
-	result = 0;
+let persons = document.getElementsByClassName('counter-block-input')[0],//Инпут ввода количества людей
+	restDays = document.getElementsByClassName('counter-block-input')[1],//Инпут ввода количества дней
+	place = document.getElementById('select'),//Выбор туристического направления 
+	totalValue = document.getElementById('total'),//Ячейка вывода общей суммы
+	personsSum = 0,//Переменная количества людей
+	daysSum = 0,//Переменная количества дней
+	total = 0,//Переменная общей суммы
+	result = 0;//Переменная общей суммы с учетом коэффициента туристического направления
 
-	totalValue.innerHTML = 0;
+	totalValue.innerHTML = 0;//Изначальная установка нуля в ячейке общей суммы
 
 	persons.addEventListener('keyup', function() {
 //Проверка инпута на запрет ввода ё, точки, запятой, букв и спецсимволов
@@ -516,7 +475,6 @@ let persons = document.getElementsByClassName('counter-block-input')[0],
 //Вычисление итоговой суммы с учетом коэффициента выбранного направления путеществия
 			result = total * place.options[place.selectedIndex].value;
 			animateValue('total', 0, result, 2000);//Запуск функции анимации числа
-			// totalValue.innerHTML = total;
 		}
 	});
 
@@ -538,7 +496,6 @@ let persons = document.getElementsByClassName('counter-block-input')[0],
 			total = (daysSum + personsSum) * 4000;//Вычисление итоговой суммы
 //Вычисление итоговой суммы с учетом коэффициента выбранного направления путеществия	
 			result = total * place.options[place.selectedIndex].value;
-			// totalValue.innerHTML = total;
 			animateValue('total', 0, result, 2000);//Запуск функции анимации числа
 		}
 	});
@@ -547,12 +504,13 @@ let persons = document.getElementsByClassName('counter-block-input')[0],
 		if (restDays.value == '' || persons.value == '') {
 			totalValue.innerHTML = 0;
 			total = 0;
+		} else if (restDays.value == 0 || persons.value == 0) {
+			totalValue.innerHTML = 0;
+			total = 0;
 		} else {
-			// a = total;
 //Вычисление итоговой суммы с учетом коэффициента выбранного направления путеществия
 			result = total * place.options[place.selectedIndex].value;
-			animateValue('total', 0, result, 2000);//Запуск функции анимации числа
-			// totalValue.innerHTML = a * this.options[this.selectedIndex].value;	
+			animateValue('total', 0, result, 2000);//Запуск функции анимации числа	
 		}
 	});
 
@@ -562,17 +520,17 @@ let persons = document.getElementsByClassName('counter-block-input')[0],
 и длительность анимации */
 function animateValue(id, start, end, duration) {
     let range = end - start,//Период перебора цифр
-        current = start,//Текущая точка отсчета
+        current = start,//Текущее число (изменяется в процессе перебора цифр)
         increment = 1000,//Шаг с которым будет увеличиваться итоговая сумма
         //Расчет скорости перебора, которая зависит от длительности и конечного числа
         stepTime = Math.abs(Math.floor(duration / range)),
-        element = document.getElementById(id);//Элемент вывода числа на экран
+        element = document.getElementById(id);//Элемент (ячейка) вывода числа на экран
 
 //Функция таймера
     let timer = setInterval(function() {
         current += increment;//Увеличение текущего значения на заданный шаг
         element.innerHTML = current;//Вывод текущего числа в элемент на экран
-        if (current === end) {//Обнуление таймера при достижении конечного числа
+        if (current >= end) {//Обнуление таймера при достижении конечного числа
             clearInterval(timer);
         }
     }, stepTime);
